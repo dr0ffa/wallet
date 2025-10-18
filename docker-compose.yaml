@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment: 
+      - DATABASE_URL = "postgresql+asyncpg://user:password@wallet_db:5432/wallet_db"
+    depends_on:
+      - wallet_db
+
+  wallet_db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=wallet_db
+    volumes:
+      - postgres_data:/var/lib/postgres/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+    
+
+
+    
