@@ -21,4 +21,8 @@ class RegisterUserRequest(BaseModel):
             raise ValueError('Passwords do not match')
         return self
 
+class LoginUserRequest(BaseModel):
+    email: EmailStr
+    username: str = Field(max_length=50)
+    password: str = Field(min_length=5, exclude=True)
     
