@@ -26,3 +26,5 @@ class LoginUserRequest(BaseModel):
     username: str = Field(max_length=50)
     password: str = Field(min_length=5, exclude=True)
     
+class ConfirmMFARequest(BaseModel):
+    otp: str

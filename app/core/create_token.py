@@ -12,7 +12,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS   = 7
 
-def create_access_token(data: Dict[str, Union[str,int,datetime]], expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
+def create_access_token(data: Dict[str, Union[str,int,datetime]], expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)): #изменить типизацию
     payload = data.copy()
     now = datetime.now(timezone.utc)
     expire = now + expires_delta
@@ -46,6 +46,23 @@ def validation_token(request):
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Missing access token")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    return username
+
+def validation_token_mfa(request):
+    token = request.cookies.get("mfa_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing mfa token")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError:

@@ -29,11 +29,12 @@ async def login_user(session: AsyncSession, email: str, username: str, password:
     if user is None or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     
-    
+    return {"username": user.username, "email": user.email, "user_id": user.id, "message": "Login successful"}
 
-    return {
-        "username": user.username, 
-        "email": user.email,
-        "user_id": user.id,
-        "message": "Login successful"
-    }
+async def get_user_id(session: AsyncSession, username: str):
+    result = await session.scalars(select(User).where(User.username == username))
+    user = result.first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"user_id": str(user.id)}
