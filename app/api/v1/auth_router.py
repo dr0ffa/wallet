@@ -8,13 +8,12 @@ from models_db.database import get_db_context
 from repositories.user_repository import register_user, login_user, get_user_id
 from repositories.mfa_repository import create_mfa_record, update_mfa_record, check_mfa, active_mfa
 
-from core.create_token import create_access_token, create_refresh_token, validation_token, validation_token_mfa
-from core.totp import enable_mfa, check_totp, get_otp
+from core.create_token import create_access_token, create_refresh_token, create_mfa_token, validation_token, validation_token_mfa, validation_token_for_refresh
+from core.totp import enable_mfa, check_totp
 from logging import getLogger
 
 from datetime import timedelta
 
-from jose import JWTError, ExpiredSignatureError
 
 logger = getLogger(__name__)
 
@@ -49,15 +48,15 @@ async def login(request: LoginUserRequest, response: Response, session: AsyncSes
         return {"user": user, "access_token": access_token, "refresh_token": refresh_token}
 
     else:
-        mfa_token = create_access_token({"sub": request.username}, expires_delta=timedelta(seconds=60))
+        mfa_token = create_mfa_token({"sub": request.username}, expires_delta=timedelta(seconds=60))
         response.set_cookie(key="mfa_token", value=mfa_token, httponly=True, secure=False, samesite="lax")
 
         return {"message": "MFA is enabled. Please verify your code.", "user_id": user_id}
 
 
 @auth_router.post("/refresh")
-async def refresh_token(request: Request, response: Response, session: AsyncSession = Depends(get_db_context)):
-    username = validation_token(request)
+async def refresh_token(request: Request, response: Response):
+    username = validation_token_for_refresh(request)
     new_access_token = create_access_token({"sub": username})
     response.set_cookie(key="access_token", value=new_access_token, httponly=True, secure=False, samesite="lax", max_age=60 * 60)
 

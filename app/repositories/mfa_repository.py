@@ -4,13 +4,14 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import NoResultFound
 import uuid
 
-from models_db.models import Mfa, User
+from models_db.models import Mfa
+from core.security import encrypt_secret, decrypt_secret
 from logging import getLogger
 logger = getLogger(__name__)
 
 async def create_mfa_record(db: AsyncSession, user_id: uuid.UUID) -> Mfa:
     new_mfa = Mfa(user_id=user_id, type=None, secret=None, enabled=False, created_at=None)
-    logger.debug(f"nach {new_mfa} ")
+    #logger.debug(f"nach {new_mfa} ")
     db.add(new_mfa)
     await db.commit()
     await db.refresh(new_mfa)
@@ -23,7 +24,7 @@ async def update_mfa_record(db: AsyncSession, user_id: uuid.UUID, secret: str, e
     if not mfa_record:
         raise NoResultFound("MFA record not found for this user")
 
-    mfa_record.secret = secret
+    mfa_record.secret = encrypt_secret(secret)
     mfa_record.enabled = enabled
     mfa_record.type = "totp"
     mfa_record.created_at = datetime.now(timezone.utc)

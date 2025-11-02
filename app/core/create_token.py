@@ -2,14 +2,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Union
 import jwt
 from fastapi import HTTPException
-#from logging import getLogger
-#logger = getLogger(__name__)
+from logging import getLogger
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = getLogger(__name__)
 
 
 SECRET_KEY = "secret-key"
+SECRET_KEY_MFA = "secret-key-mfa"
 ALGORITHM = "HS256"
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 3
 REFRESH_TOKEN_EXPIRE_DAYS   = 7
 
 def create_access_token(data: Dict[str, Union[str,int,datetime]], expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)): #изменить типизацию
@@ -38,9 +42,43 @@ def create_refresh_token(data: Dict[str, Union[str,int,datetime]], expires_delta
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def create_mfa_token(data: Dict[str, Union[str,int,datetime]], expires_delta: timedelta = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)):
+    to_encode = data.copy()
+    now = datetime.now(timezone.utc)
+    expire = now + expires_delta
+    to_encode.update({
+        "iat": now,
+        "exp": expire,
+        "type": "mfa"
+    })
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY_MFA, algorithm=ALGORITHM)
+    return encoded_jwt
+
 def decode_token(token: str) -> Dict[str, Union[str,int]]:
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     return payload
+
+def validation_token_for_refresh(request):
+    token = request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing access token")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    token_type = payload.get("type")
+    if token_type != "refresh" and token_type != "access":
+        logger.debug(token_type)
+        raise HTTPException(status_code=403, detail="Invalid token type")
+
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    return username
 
 def validation_token(request):
     token = request.cookies.get("access_token")
@@ -52,6 +90,11 @@ def validation_token(request):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
+    token_type = payload.get("type")
+    if token_type != "refresh" and token_type != "access":
+        logger.debug(token_type)
+        raise HTTPException(status_code=403, detail="Invalid token type")
 
     username = payload.get("sub")
     if not username:
@@ -64,11 +107,15 @@ def validation_token_mfa(request):
     if not token:
         raise HTTPException(status_code=401, detail="Missing mfa token")
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY_MFA, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
+    token_type = payload.get("type")
+    if token_type != "mfa":
+        raise HTTPException(status_code=403, detail="Invalid token type")
 
     username = payload.get("sub")
     if not username:
