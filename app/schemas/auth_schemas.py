@@ -28,3 +28,4 @@ class LoginUserRequest(BaseModel):
     
 class ConfirmMFARequest(BaseModel):
     otp: str
+    

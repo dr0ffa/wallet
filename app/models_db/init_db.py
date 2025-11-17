@@ -1,6 +1,5 @@
 import asyncio
 from models_db.database import engine, Base
-from models_db.models import Mfa, User
 
 
 async def init_models():

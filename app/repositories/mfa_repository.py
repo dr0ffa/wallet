@@ -5,8 +5,10 @@ from sqlalchemy.exc import NoResultFound
 import uuid
 
 from models_db.models import Mfa
-from core.security import encrypt_secret, decrypt_secret
+from core.security import encrypt_secret
 from logging import getLogger
+
+
 logger = getLogger(__name__)
 
 async def create_mfa_record(db: AsyncSession, user_id: uuid.UUID) -> Mfa:

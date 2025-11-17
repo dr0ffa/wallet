@@ -13,7 +13,7 @@ SECRET_KEY = "secret-key"
 SECRET_KEY_MFA = "secret-key-mfa"
 ALGORITHM = "HS256"
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 3
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS   = 7
 
 def create_access_token(data: Dict[str, Union[str,int,datetime]], expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)): #изменить типизацию
@@ -92,10 +92,15 @@ def validation_token(request):
         raise HTTPException(status_code=401, detail="Invalid token")
     
     token_type = payload.get("type")
-    if token_type != "refresh" and token_type != "access":
-        logger.debug(token_type)
+    if not token_type:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    if token_type == "mfa":
+        raise HTTPException(status_code=401, detail="User unauthorized")
+    
+    if token_type not in ["access", "refresh"]:
         raise HTTPException(status_code=403, detail="Invalid token type")
-
+    
     username = payload.get("sub")
     if not username:
         raise HTTPException(status_code=401, detail="Invalid token payload")
@@ -122,3 +127,42 @@ def validation_token_mfa(request):
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
     return username
+
+
+"""def validition_token_all(request):
+    token = (request.cookies.get("access_token") or request.cookies.get("mfa_token"))
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        key_type = "main"
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        try:
+            payload = jwt.decode(token, SECRET_KEY_MFA, algorithms=[ALGORITHM])
+            key_type = "mfa"
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="MFA token expired")
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+
+    token_type = payload.get("type")
+    if not token_type:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    if token_type == "mfa":
+        raise HTTPException(status_code=401, detail="User unauthorized")
+    
+    if token_type not in ["access", "refresh"]:
+        raise HTTPException(status_code=403, detail="Invalid token type")
+    
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    return username
+    
+"""
