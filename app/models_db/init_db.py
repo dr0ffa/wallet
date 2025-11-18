@@ -1,4 +1,3 @@
-import asyncio
 from models_db.database import engine, Base
 
 

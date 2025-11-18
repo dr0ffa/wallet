@@ -75,7 +75,7 @@ class Transaction(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     wallet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("wallet.id"), nullable=False)
-    type: Mapped[str] = mapped_column(String(50), nullable=False)  # "deposit", "withdraw", "transfer"
+    type: Mapped[str] = mapped_column(String(50), nullable=False)  # deposit, "withdraw", "transfer"
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String(10), nullable=False) # валюта
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # "pending", "completed", "failed"
